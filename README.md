@@ -179,3 +179,122 @@ Optional bonus:
 - add authentication for SSE or HTTP transport
 - support both SQLite and PostgreSQL with the same MCP surface
 - add richer output annotations or pagination
+
+---
+
+## Setup
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+ (for MCP Inspector)
+- fastmcp already installed: `pip install fastmcp`
+
+### Install dependencies
+
+```bash
+pip install fastmcp pytest
+```
+
+### Initialize the database
+
+```bash
+cd implementation
+python init_db.py
+```
+
+### Run the server (stdio — for use with Claude Code or Inspector)
+
+```bash
+cd implementation
+python mcp_server.py
+```
+
+### Run HTTP/SSE mode (bonus)
+
+```bash
+cd implementation
+python mcp_server.py --transport sse --port 8000
+```
+
+---
+
+## Testing
+
+### Unit tests
+
+```bash
+cd implementation
+python -m pytest tests/test_server.py -v
+```
+
+### Smoke test (headless MCP client)
+
+```bash
+cd implementation
+python verify_server.py
+```
+
+---
+
+## MCP Inspector
+
+### Windows (CMD)
+
+```bat
+cd implementation
+start_inspector.bat
+```
+
+### Git Bash / WSL
+
+```bash
+cd implementation
+bash start_inspector.sh
+```
+
+Then open the URL shown in the terminal (usually http://localhost:5173).
+
+**Checklist in Inspector:**
+- Tools tab: `search`, `insert`, `aggregate` are listed with schemas
+- Resources tab: `schema://database` is listed
+- Call `search` with `{"table": "students"}` → rows returned
+- Call `search` with `{"table": "bad_table"}` → error returned
+
+---
+
+## Claude Code Client
+
+Copy `.mcp.json` from `implementation/.mcp.json` to the project root, or add the server to your Claude Code config:
+
+```bash
+claude mcp add sqlite-lab \
+  "C:/Users/LONG NGO/AppData/Local/Programs/Python/Python312/python.exe" \
+  "e:/Track_3/Day26/Day26-Track3-MCP-tool-integration/implementation/mcp_server.py"
+```
+
+Then in Claude Code, reference the schema resource with:
+```
+@sqlite-lab:schema://database
+```
+
+### Example prompts
+
+- "Use sqlite-lab to search all students in cohort A1"
+- "Use sqlite-lab to insert a new student named Grace in cohort A2 with score 91"
+- "Use sqlite-lab to compute average score by cohort"
+- "Read @sqlite-lab:schema://table/students and describe the columns"
+
+---
+
+## Demo Tasks
+
+| Task | Tool | Expected |
+|------|------|----------|
+| List all students | `search` `table=students` | 5 rows |
+| Filter cohort A1 | `search` `filters={"cohort":{"eq":"A1"}}` | 3 rows |
+| Insert student | `insert` `table=students values={...}` | `{id: N, inserted: {...}}` |
+| Count students | `aggregate` `metric=count` | `[{"value": 5}]` |
+| Avg score by cohort | `aggregate` `metric=avg column=score group_by=cohort` | 2 groups |
+| Bad table | `search` `table=nonexistent` | `{"error": "Unknown table..."}` |
+| Read schema | resource `schema://database` | JSON schema |
+| Single table schema | resource `schema://table/students` | columns list |
